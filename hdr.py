@@ -4,6 +4,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from sklearn import linear_model
+import sys
 
 np.warnings.filterwarnings('ignore')
 
@@ -160,10 +161,6 @@ def response_curve_Mitsunaga(imgs, exposures):
         g[j] = f
     return g
 
-        
-    
-    
-
 
 def radiance_map(g, imgs, ln_t, w):
     Z = np.array([img.flatten() for img in imgs])
@@ -188,9 +185,8 @@ def construct_hdr(img_list, curve_list, exposures):
     for i in range(256):
         w.append(i if i < 127.5 else 255-i)
 
-    vexp = np.vectorize(lambda x:math.exp(x))           # for exponational
     hdr = np.zeros((img_size[0], img_size[1], 3), 'float32')
-
+    vexp = np.vectorize(lambda x:math.exp(x))
     # construct RGB radiance map
     for i in range(3):
         print("  {0} channel ... ".format('b' if i == 0 else ('g' if i == 1 else 'r')), end='')
@@ -226,7 +222,22 @@ def save_hdr(hdr, filename):
     rgbe.flatten().tofile(f)
     f.close()
 
-    
+
+def tone_mapping(hdr, method='global', d=1e-5, a=0.5):
+    if method == 'global':
+        Lw = hdr
+        Lw_bar = np.exp(np.mean(np.log(d + Lw)))
+        Lm = (a / Lw_bar) * Lw
+        Lm_white = np.max(Lm)
+        Ld = (Lm * (1 + (Lm / (Lm_white ** 2)))) / (1 + Lm)
+        ldr = np.clip(np.array(Ld * 255), 0, 255)
+        return ldr.astype(np.uint8)
+
+    elif method == 'local':
+        return 
+    else:
+        print('No this tone mapping method...')
+        return
 
 if __name__ == '__main__':
     
@@ -252,9 +263,9 @@ if __name__ == '__main__':
     g_b_m = response_curve_Mitsunaga(imgs_b, exposures)
 
     # plt.figure(figsize=(10, 10))
-    # plt.plot(g_r_m, range(256), 'r')
-    # plt.plot(g_g_m, range(256), 'g')
-    # plt.plot(g_b_m, range(256), 'b')
+    # plt.plot([math.log(i+0.000001) for i in g_r_m], range(256), 'r')
+    # plt.plot([math.log(i+0.000001) for i in g_g_m], range(256), 'g')
+    # plt.plot([math.log(i+0.000001) for i in g_b_m], range(256), 'b')
     # plt.ylabel('Pixel value')
     # plt.xlabel(r"$\ln(E_{i}) + \ln(\Delta t_{j})$")
     # plt.savefig('response-curve_m.png')
@@ -275,6 +286,12 @@ if __name__ == '__main__':
     save_hdr(hdr_m, 'memorial_m.hdr')
     print('ok')
 
+    # tone mapping
+    print(" Tone mapping...", end='')
+    global_ldr = tone_mapping(hdr_m, 'global')
+    cv2.imwrite('global_ldr_m.jpg', global_ldr)
+    print('ok')
+
     
     # Recovering response curve by Debevec's method
     print("Debevec's method ... ")
@@ -290,7 +307,7 @@ if __name__ == '__main__':
     # plt.xlabel(r"$\ln(E_{i}) + \ln(\Delta t_{j})$")
     # plt.savefig('response-curve.png')
     
-    # # Reconstruct hdr
+    # Reconstruct hdr
     print(" Construct hdr ... ")
     hdr = construct_hdr([imgs_b, imgs_g, imgs_r], [g_b, g_g, g_r], exposures)
     
@@ -305,4 +322,10 @@ if __name__ == '__main__':
 
     print(" Save hdr file ... ", end='')
     save_hdr(hdr, 'memorial.hdr')
+    print('ok')
+
+    # tone mapping
+    print(" Tone mapping...", end='')
+    global_ldr = tone_mapping(hdr, 'global')
+    cv2.imwrite('global_ldr.jpg', global_ldr)
     print('ok')
