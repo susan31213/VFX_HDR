@@ -9,9 +9,20 @@ import sys
 np.warnings.filterwarnings('ignore')
 
 
-img_dir = 'Memorial_SourceImages/'
-list_file = 'memorial.hdr_image_list.txt'
+img_dir = 'Images/4_aligned/'
+list_file = 'image_list.txt'
 LAMDBA = 50
+
+def progress(count, total, status):
+    bar_len = 60
+    filled_len = int(round(bar_len * count / float(total)))
+
+    percents = round(100.0 * count / float(total), 1)
+    bar = '=' * filled_len + '-' * (bar_len - filled_len)
+
+    sys.stdout.write('[%s] %s%s ... %s \r' % (bar, percents, '%', status))
+    sys.stdout.flush()
+
 
 def load_img(dir, rgb):
     img = []
@@ -162,13 +173,14 @@ def response_curve_Mitsunaga(imgs, exposures):
     return g
 
 
-def radiance_map(g, imgs, ln_t, w):
+def radiance_map(g, imgs, ln_t, w, status):
     Z = np.array([img.flatten() for img in imgs])
     acc_E = np.zeros(Z[0].shape)
     ln_E = np.zeros(Z[0].shape)
     
     pixels, imgs = Z.shape[1], Z.shape[0]
     for i in range(pixels):
+        progress(i, pixels, status)
         acc_w = 0
         for j in range(imgs):
             z = Z[j][i]
@@ -189,10 +201,10 @@ def construct_hdr(img_list, curve_list, exposures):
     vexp = np.vectorize(lambda x:math.exp(x))
     # construct RGB radiance map
     for i in range(3):
-        print("  {0} channel ... ".format('b' if i == 0 else ('g' if i == 1 else 'r')), end='')
-        E = radiance_map(curve_list[i], img_list[i], np.log(exposures), w)
+        # print("  {0} channel ... ".format('b' if i == 0 else ('g' if i == 1 else 'r')))
+        E = radiance_map(curve_list[i], img_list[i], np.log(exposures), w, 'b channel' if i == 0 else ('g channel' if i == 1 else 'r channel'))
         hdr[..., i] = np.reshape(vexp(E), img_size)     # exponational RGB channels and reshape to image size
-        print('ok')
+        print('')
     return hdr
 
 
@@ -249,9 +261,10 @@ if __name__ == '__main__':
     for line in list_lines:
         s = line.split()
         files.append(s[0])
-        exposures.append(1/float(s[1]))
+        exposures.append(float(s[1]))
     
     # Read img
+    print("Loading images ... ")
     imgs_r = load_img(files, 2)
     imgs_g = load_img(files, 1)
     imgs_b = load_img(files, 0)
@@ -278,18 +291,18 @@ if __name__ == '__main__':
     plt.figure(figsize=(12,8))
     plt.imshow(np.log(cv2.cvtColor(hdr_m, cv2.COLOR_BGR2GRAY)), cmap='jet')
     plt.colorbar()
-    plt.savefig('radiance-map_m.png')
+    plt.savefig(img_dir+'radiance-map_m.png')
     print('ok')
 
     # Save hdr file
     print(" Save hdr file ... ", end='')
-    save_hdr(hdr_m, 'memorial_m.hdr')
+    save_hdr(hdr_m, img_dir+'memorial_m.hdr')
     print('ok')
 
     # tone mapping
     print(" Tone mapping...", end='')
     global_ldr = tone_mapping(hdr_m, 'global')
-    cv2.imwrite('global_ldr_m.jpg', global_ldr)
+    cv2.imwrite(img_dir+'global_ldr_m.jpg', global_ldr)
     print('ok')
 
     
@@ -317,15 +330,15 @@ if __name__ == '__main__':
     plt.figure(figsize=(12,8))
     plt.imshow(np.log(cv2.cvtColor(hdr, cv2.COLOR_BGR2GRAY)), cmap='jet')
     plt.colorbar()
-    plt.savefig('radiance-map.png')
+    plt.savefig(img_dir+'radiance-map.png')
     print('ok')
 
     print(" Save hdr file ... ", end='')
-    save_hdr(hdr, 'memorial.hdr')
+    save_hdr(hdr,img_dir+'memorial.hdr')
     print('ok')
 
     # tone mapping
     print(" Tone mapping...", end='')
     global_ldr = tone_mapping(hdr, 'global')
-    cv2.imwrite('global_ldr.jpg', global_ldr)
+    cv2.imwrite(img_dir+'global_ldr.jpg', global_ldr)
     print('ok')
