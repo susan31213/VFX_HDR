@@ -9,9 +9,16 @@ import sys
 np.warnings.filterwarnings('ignore')
 
 
-img_dir = 'Images/4_aligned/'
 list_file = 'image_list.txt'
 LAMDBA = 50
+
+def command_validate():
+    if len(sys.argv) != 2:
+        print('Usage: python hdr.py <image folder contains image_list.txt>')
+        sys.stdout.flush()
+        return False
+    return True
+
 
 def progress(count, total, status):
     bar_len = 60
@@ -247,98 +254,131 @@ def tone_mapping(hdr, method='global', d=1e-5, a=0.5):
 
     elif method == 'local':
         return 
+
+    elif method == 'Drago':
+        tonemapDrago = cv2.createTonemapDrago(1.0, 0.7)
+        ldrDurand = tonemapDrago.process(hdr)
+        ldrDurand = 3 * ldrDurand
+        return ldrDurand * 255
+
+    elif method == 'Reinhard':
+        tonemapReinhard = cv2.createTonemapReinhard(1.5, 0,0,0)
+        ldrReinhard = tonemapReinhard.process(hdr)
+        return ldrReinhard * 255
+
     else:
         print('No this tone mapping method...')
         return
 
 if __name__ == '__main__':
-    
-    # Read list and get file paths
-    f = open(img_dir + list_file, 'r')
-    list_lines = f.readlines()
-    files = []
-    exposures = []
-    for line in list_lines:
-        s = line.split()
-        files.append(s[0])
-        exposures.append(float(s[1]))
-    
-    # Read img
-    print("Loading images ... ")
-    imgs_r = load_img(files, 2)
-    imgs_g = load_img(files, 1)
-    imgs_b = load_img(files, 0)
 
-    # Recovering response curve by Mitsunaga's method
-    print("Mitsunaga's method ... ")
-    g_r_m = response_curve_Mitsunaga(imgs_r, exposures)
-    g_g_m = response_curve_Mitsunaga(imgs_g, exposures)
-    g_b_m = response_curve_Mitsunaga(imgs_b, exposures)
+    # command validate
+    if command_validate():
 
-    # plt.figure(figsize=(10, 10))
-    # plt.plot([math.log(i+0.000001) for i in g_r_m], range(256), 'r')
-    # plt.plot([math.log(i+0.000001) for i in g_g_m], range(256), 'g')
-    # plt.plot([math.log(i+0.000001) for i in g_b_m], range(256), 'b')
-    # plt.ylabel('Pixel value')
-    # plt.xlabel(r"$\ln(E_{i}) + \ln(\Delta t_{j})$")
-    # plt.savefig('response-curve_m.png')
+        img_dir = sys.argv[1]
 
-    print(" Construct hdr ... ")
-    hdr_m = construct_hdr([imgs_b, imgs_g, imgs_r], [g_b_m, g_g_m, g_r_m], exposures)
+        # Read list and get file paths
+        f = open(img_dir + list_file, 'r')
+        list_lines = f.readlines()
+        files = []
+        exposures = []
+        for line in list_lines:
+            s = line.split()
+            files.append(s[0])
+            exposures.append(float(s[1]))
+        
+        # Read img
+        print("Loading images ... ")
+        imgs_r = load_img(files, 2)
+        imgs_g = load_img(files, 1)
+        imgs_b = load_img(files, 0)
 
-    # Save Radiance map
-    print(" Save Radiance map ... ", end='')
-    plt.figure(figsize=(12,8))
-    plt.imshow(np.log(cv2.cvtColor(hdr_m, cv2.COLOR_BGR2GRAY)), cmap='jet')
-    plt.colorbar()
-    plt.savefig(img_dir+'radiance-map_m.png')
-    print('ok')
+        # Recovering response curve by Mitsunaga's method
+        print("Mitsunaga's method ... ")
+        g_r_m = response_curve_Mitsunaga(imgs_r, exposures)
+        g_g_m = response_curve_Mitsunaga(imgs_g, exposures)
+        g_b_m = response_curve_Mitsunaga(imgs_b, exposures)
 
-    # Save hdr file
-    print(" Save hdr file ... ", end='')
-    save_hdr(hdr_m, img_dir+'memorial_m.hdr')
-    print('ok')
+        # plt.figure(figsize=(10, 10))
+        # plt.plot([math.log(i+0.000001) for i in g_r_m], range(256), 'r')
+        # plt.plot([math.log(i+0.000001) for i in g_g_m], range(256), 'g')
+        # plt.plot([math.log(i+0.000001) for i in g_b_m], range(256), 'b')
+        # plt.ylabel('Pixel value')
+        # plt.xlabel(r"$\ln(E_{i}) + \ln(\Delta t_{j})$")
+        # plt.savefig('response-curve_m.png')
 
-    # tone mapping
-    print(" Tone mapping...", end='')
-    global_ldr = tone_mapping(hdr_m, 'global')
-    cv2.imwrite(img_dir+'global_ldr_m.jpg', global_ldr)
-    print('ok')
+        print(" Construct hdr ... ")
+        hdr_m = construct_hdr([imgs_b, imgs_g, imgs_r], [g_b_m, g_g_m, g_r_m], exposures)
 
-    
-    # Recovering response curve by Debevec's method
-    print("Debevec's method ... ")
-    g_r, lnE_r = response_curve_Debevec(imgs_r, exposures)
-    g_g, lnE_g = response_curve_Debevec(imgs_g, exposures)
-    g_b, lnE_b = response_curve_Debevec(imgs_b, exposures)
+        # Save Radiance map
+        print(" Save Radiance map ... ", end='')
+        plt.figure(figsize=(12,8))
+        plt.imshow(np.log(cv2.cvtColor(hdr_m, cv2.COLOR_BGR2GRAY)), cmap='jet')
+        plt.colorbar()
+        plt.savefig(img_dir+'radiance-map_m.png')
+        print('ok')
 
-    # plt.figure(figsize=(10, 10))
-    # plt.plot(g_r, range(256), 'r')
-    # plt.plot(g_g, range(256), 'g')
-    # plt.plot(g_b, range(256), 'b')
-    # plt.ylabel('Pixel value')
-    # plt.xlabel(r"$\ln(E_{i}) + \ln(\Delta t_{j})$")
-    # plt.savefig('response-curve.png')
-    
-    # Reconstruct hdr
-    print(" Construct hdr ... ")
-    hdr = construct_hdr([imgs_b, imgs_g, imgs_r], [g_b, g_g, g_r], exposures)
-    
+        # Save hdr file
+        print(" Save hdr file ... ", end='')
+        save_hdr(hdr_m, img_dir+'output_m.hdr')
+        print('ok')
 
-    # Save Radiance map
-    print(" Save Radiance map ... ", end='')
-    plt.figure(figsize=(12,8))
-    plt.imshow(np.log(cv2.cvtColor(hdr, cv2.COLOR_BGR2GRAY)), cmap='jet')
-    plt.colorbar()
-    plt.savefig(img_dir+'radiance-map.png')
-    print('ok')
+        # tone mapping - global
+        print(" Tone mapping...", end='')
+        global_ldr = tone_mapping(hdr_m, 'global')
+        cv2.imwrite(img_dir+'global_ldr_m.jpg', global_ldr)
+        
+        # tone mapping - Durand's method
+        Durand_ldr = tone_mapping(hdr_m, 'Drago')
+        cv2.imwrite(img_dir+"Drago_ldr_m.jpg", Durand_ldr)
 
-    print(" Save hdr file ... ", end='')
-    save_hdr(hdr,img_dir+'memorial.hdr')
-    print('ok')
+        # tone mapping - Reinhard's method
+        Reinhard_ldr = tone_mapping(hdr_m, 'Reinhard')
+        cv2.imwrite(img_dir+"Reinhard_ldr_m.jpg", Reinhard_ldr)
+        print('ok')
 
-    # tone mapping
-    print(" Tone mapping...", end='')
-    global_ldr = tone_mapping(hdr, 'global')
-    cv2.imwrite(img_dir+'global_ldr.jpg', global_ldr)
-    print('ok')
+        
+        # Recovering response curve by Debevec's method
+        print("Debevec's method ... ")
+        g_r, lnE_r = response_curve_Debevec(imgs_r, exposures)
+        g_g, lnE_g = response_curve_Debevec(imgs_g, exposures)
+        g_b, lnE_b = response_curve_Debevec(imgs_b, exposures)
+
+        # plt.figure(figsize=(10, 10))
+        # plt.plot(g_r, range(256), 'r')
+        # plt.plot(g_g, range(256), 'g')
+        # plt.plot(g_b, range(256), 'b')
+        # plt.ylabel('Pixel value')
+        # plt.xlabel(r"$\ln(E_{i}) + \ln(\Delta t_{j})$")
+        # plt.savefig('response-curve.png')
+        
+        # Reconstruct hdr
+        print(" Construct hdr ... ")
+        hdr = construct_hdr([imgs_b, imgs_g, imgs_r], [g_b, g_g, g_r], exposures)
+        
+
+        # Save Radiance map
+        print(" Save Radiance map ... ", end='')
+        plt.figure(figsize=(12,8))
+        plt.imshow(np.log(cv2.cvtColor(hdr, cv2.COLOR_BGR2GRAY)), cmap='jet')
+        plt.colorbar()
+        plt.savefig(img_dir+'radiance-map.png')
+        print('ok')
+
+        print(" Save hdr file ... ", end='')
+        save_hdr(hdr,img_dir+'output.hdr')
+        print('ok')
+
+        # tone mapping - global
+        print(" Tone mapping...", end='')
+        global_ldr = tone_mapping(hdr, 'global')
+        cv2.imwrite(img_dir+'global_ldr.jpg', global_ldr)
+        
+        # tone mapping - Durand's method
+        Durand_ldr = tone_mapping(hdr, 'Drago')
+        cv2.imwrite(img_dir+"Drago_ldr.jpg", Durand_ldr)
+
+        # tone mapping - Reinhard's method
+        Reinhard_ldr = tone_mapping(hdr, 'Reinhard')
+        cv2.imwrite(img_dir+"Reinhard_ldr.jpg", Reinhard_ldr)
+        print('ok')

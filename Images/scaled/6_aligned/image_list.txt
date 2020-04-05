@@ -1,0 +1,13 @@
+shifted_Lin_6_1-1.JPG	1	8 0 0
+shifted_Lin_6_3-5.JPG	0.6	8 0 0
+shifted_Lin_6_1-2.JPG	0.5	8 0 0
+shifted_Lin_6_3-10.JPG	0.3	8 0 0
+shifted_Lin_6_1-4.JPG	0.25	8 0 0
+shifted_Lin_6_1-6.JPG	0.167	8 0 0
+shifted_Lin_6_1-8.JPG	0.125	8 0 0
+shifted_Lin_6_1-13.JPG	0.077	8 0 0
+shifted_Lin_6_1-15.JPG	0.067	8 0 0
+shifted_Lin_6_1-25.JPG	0.04	8 0 0
+shifted_Lin_6_1-30.JPG	0.033	8 0 0
+shifted_Lin_6_1-50.JPG	0.02	8 0 0
+shifted_Lin_6_1-60.JPG	0.017	8 0 0
