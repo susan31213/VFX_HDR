@@ -1,6 +1,8 @@
 # VFX_HDR
 
 ## Change log
++ 2020/04/07
+  1. Implement HDR from raw image
 + 2020/04/06
   1. Report page: https://hackmd.io/@susan31213/B1m7_YPDL
   2. Add results in Images/scaled
