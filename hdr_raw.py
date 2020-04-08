@@ -3,8 +3,9 @@ import glob
 import cv2
 import numpy as np 
 from tqdm import tqdm
+import HDRImageAlign
 
-dir = "Images/1_raw/"
+dir = "Images/5_raw/"
 
 # Get all the jpg files in the directory
 file_path_dict = {}
@@ -18,6 +19,8 @@ exposure_list = sorted(file_path_dict.keys(), reverse=True)
 file_path_list = [file_path_dict[exposure] for exposure in exposure_list]
 
 # Read the images and calculate x
+with open("5_shift.txt", "r") as file:
+    shift_list = eval(file.readline())
 img_raw_list = []
 img_x_list = []
 for i in range(len(file_path_list)):
@@ -25,6 +28,8 @@ for i in range(len(file_path_list)):
     with rawpy.imread(file_path) as raw:
         curr_raw = raw.postprocess(use_camera_wb=True, half_size=False, no_auto_bright=True, output_bps=16)
         curr_raw = curr_raw.astype('float32') / 2**16
+        translation_matrix = np.float32([[1, 0, shift_list[i][0]], [0, 1, shift_list[i][1]]])
+        curr_raw = cv2.warpAffine(curr_raw, translation_matrix, (curr_raw.shape[1], curr_raw.shape[0]))
         img_raw_list.append(curr_raw)
         curr_x = np.array([raw_value / exposure_list[i] for raw_value in curr_raw])
         img_x_list.append(curr_x)
@@ -46,10 +51,10 @@ for channel in range(img_shape[2]):
             radiance_map[i, j] = sum_tx / sum_t_square
     img_hdr[..., channel] = cv2.normalize(radiance_map, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
 
-cv2.imwrite("raw_hdr.hdr", img_hdr[...,::-1])
+cv2.imwrite("raw_hdr_5.hdr", img_hdr[...,::-1])
 
 # hdr_image = cv2.imread("raw_hdr.hdr")
-cv2.imwrite("hdr_jpg.jpg", img_hdr[...,::-1].astype(np.uint8))
+cv2.imwrite("hdr_jpg_5.jpg", img_hdr[...,::-1].astype(np.uint8))
 
 # np.save("radiance_map_1", radiance_map)
 # print(max_sum_tx)
